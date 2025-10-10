@@ -129,15 +129,15 @@ kubectl apply -f mgmt.yaml
 ```
 
 Once the load balancer becomes healty, get the kubeconfig and store it in /tmp
-
+```
 clusterctl get kubeconfig mgmt-cluster > /tmp/mgmt-cluster
 
 ```
 
-```
+
 Install Hetzner CCM and CSI
 
-
+```
 KUBECONFIG=/tmp/mgmt-cluster helm repo add hcloud https://charts.hetzner.cloud
 KUBECONFIG=/tmp/mgmt-cluster helm repo update hcloud
 
@@ -163,7 +163,7 @@ KUBECONFIG=/tmp/mgmt-cluster k get csidrivers
 Install the Flannel CNI
 
 ```
-KUBECONFIG=/tmp/mgmt-cluster k apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+KUBECONFIG=/tmp/mgmt-cluster kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 ```
 
 Now turn this newly created cluster into our management cluster where we can create n number of workload clusters
@@ -193,13 +193,13 @@ KUBECONFIG=/tmp/mgmt-cluster clusterctl generate cluster dev-cluster --kubernete
 
 Create the namespace
 ```
-KUBECONFIG=/tmp/mgmt-cluster k create ns dev-cluster
-``
+KUBECONFIG=/tmp/mgmt-cluster kubectl create ns dev-cluster
+```
 
 
 Creating a secret based on the api token we created
 ```
-KUBECONFIG=/tmp/mgmt-cluster  kubectl create secret -n dev-cluster generic hetzner --from-literal=hcloud=$HCLOUD_TOKEN
+KUBECONFIG=/tmp/mgmt-cluster kubectl create secret -n dev-cluster generic hetzner --from-literal=hcloud=$HCLOUD_TOKEN
 ```
 
 Add a special label to allow this secret to be moved when we pivot our mgmt cluster.
@@ -211,7 +211,7 @@ Apply the dev cluster yaml
 
 ```
 
-KUBECONFIG=/tmp/mgmt-cluster k apply -f dev.yaml
+KUBECONFIG=/tmp/mgmt-cluster kubectl apply -f dev.yaml
 
 ```
 
@@ -226,7 +226,7 @@ KUBECONFIG=/tmp/mgmt-cluster clusterctl -n dev-cluster get kubeconfig dev-cluste
 
 Install Hetzner CCM and CSI
 
-
+```
 KUBECONFIG=/tmp/dev-cluster helm repo add hcloud https://charts.hetzner.cloud
 KUBECONFIG=/tmp/dev-cluster helm repo update hcloud
 
@@ -240,8 +240,8 @@ KUBECONFIG=/tmp/dev-cluster helm upgrade --install hcloud-csi hcloud/hcloud-csi 
         --namespace kube-system \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.name=hetzner \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.key=hcloud
-
 ```
+
 validate csi
 
 ```
