@@ -120,8 +120,6 @@ Now create the manifest files for our management cluster
 clusterctl generate cluster mgmt-cluster --kubernetes-version v1.31.6 --control-plane-machine-count=3 --worker-machine-count=1  > mgmt.yaml
 ```
 
-IGNORE FOR NOW: remove cloud-provider from extraargs in the resulting manifest file.
-
 Then apply the cluster manifests
 
 ```
