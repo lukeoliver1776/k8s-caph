@@ -1,8 +1,18 @@
 # Setting up a CAPI management cluster in Hetzner
 
+## Why?
+
+This repository outlines the steps required to create a fully functional Cluster API (CAPI) management cluster on [Hetzner Cloud](https://www.hetzner.com/cloud) (hcloud). It uses a local Kind bootstrap cluster to provision and manage workload clusters. This setup is ideal for experimenting with declarative Kubernetes cluster lifecycle management or migrating existing clusters from local environments to the cloud.
+
+**Tools & Technologies**
+- Cluster API (CAPI)
+- Hetzner Cloud (hcloud)
+- Kind (Kubernetes in Docker)
+- Helm, kubectl, clusterctl
+
 ## Overall Process
 
-Boostrap kind cluster -> managment cluster in hetzner -> n number of workload clusters you want to manage
+Bootstrap kind cluster -> management cluster in hetzner -> n number of workload clusters you want to manage
 
 Loosely based on 
 
@@ -15,7 +25,7 @@ https://syself.com/docs/caph/getting-started/quickstart/management-cluster-setup
 
 ## Set up Hetzner
 
-### Copy the example env file 
+### Copy the Example .env File 
 
 The `mgmt.env` file gives an example configuration for your management cluster
 
@@ -23,10 +33,10 @@ The `mgmt.env` file gives an example configuration for your management cluster
 cp mgmt.env .env
 ```
 
-### Create a project in Hetzner
+### Create a Project In Hetzner
 
 
-Create a project in hetzner to provide for seperation of interests. We called it "mgmt cluster".
+Create a project in hetzner to provide for separation of interests. We called it "mgmt cluster". You should ideally have one cluster per Hetzner project.
 
 ### Security
 
@@ -39,7 +49,7 @@ Create ssh key and apply it to the project in the security section of the dashbo
 ssh-keygen -t ed25519 -C "mgmt-cluster" -f ~/.ssh/mgmt-cluster-ssh-key
 ```
 
-Add the public key into the SSH Keys area of the Security dashboardh
+Add the public key into the SSH Keys area of the Security dashboard
 
  ```
  cat ~/.ssh/mgmt-cluster-ssh-key.pub
@@ -54,7 +64,7 @@ Create an API token called mgmt-cluster and give it read/write permissions.
 Place the created token into the .env file using the HCLOUD_TOKEN variable.
 
 
-## Set up developer machine
+## Set up Developer Machine
 
 Install pre-requisite software
 
@@ -62,15 +72,15 @@ Install pre-requisite software
 brew install kubectl kind clusterctl helm hcloud kubectx kubernetes-cli
 ```
 
-If you have some of these components installed already, makek sure they are the most recent version
+If you have some of these components installed already, make sure they are the most recent version
 
 ```
 brew upgrade
 ```
 
-## Active the variables in env
+## Activate the Variables In .env
 
-Turn your .env file into real exported variables accessable to our system
+Turn your .env file into real exported variables accessible to our system
 
 ```
 set -a
@@ -79,7 +89,7 @@ set +a
 ```
 
 
-## Create and boostrap a local management cluster
+## Create and Bootstrap a Local Management Cluster
 
 Create a local bootstrap cluster using kind.
 
@@ -89,7 +99,7 @@ kind create cluster --name bootstrap-cluster
 
 ```
 
-Now install CAPI into the newly created boostrap-cluster. This basically turns the bootstrap cluster into a temporary capi management cluster.
+Now install CAPI into the newly created bootstrap-cluster. This basically turns the bootstrap cluster into a temporary capi management cluster.
 
 ```
 clusterctl init --core cluster-api --bootstrap kubeadm --control-plane kubeadm --infrastructure hetzner
@@ -106,7 +116,7 @@ Add a special label to allow this secret to be moved when we pivot our mgmt clus
 kubectl patch secret hetzner -p '{"metadata":{"labels":{"clusterctl.cluster.x-k8s.io/move":""}}}'
 ```
 
-## Generate manifests for management cluster
+## Generate Manifests for Management Cluster
 
 Generate the manifests for your management cluster. To see all of the required and optional variables run this command
 
@@ -126,44 +136,46 @@ Then apply the cluster manifests
 kubectl apply -f mgmt.yaml
 ```
 
-Once the load balancer becomes healty, get the kubeconfig and store it in /tmp
+Once the load balancer becomes healthy, get the kubeconfig and store it in /tmp
 ```
 clusterctl get kubeconfig mgmt-cluster > /tmp/mgmt-cluster
 
 ```
 
 
-Install Hetzner CCM and CSI
+## Install Hetzner CCM and CSI
 
 ```
 KUBECONFIG=/tmp/mgmt-cluster helm repo add hcloud https://charts.hetzner.cloud
 KUBECONFIG=/tmp/mgmt-cluster helm repo update hcloud
-
+```
+```
 KUBECONFIG=/tmp/mgmt-cluster helm upgrade --install hccm hcloud/hcloud-cloud-controller-manager \
         --namespace kube-system \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.name=hetzner \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.key=hcloud
-
-
+```
+```
 KUBECONFIG=/tmp/mgmt-cluster helm upgrade --install hcloud-csi hcloud/hcloud-csi \
         --namespace kube-system \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.name=hetzner \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.key=hcloud
 
 ```
-validate csi
+## Validate [CSI](https://portworx.com/knowledge-hub/a-complete-guide-to-kubernetes-csi/)
 
 ```
 KUBECONFIG=/tmp/mgmt-cluster k get csidrivers
 ```
 
 
-Install the Flannel CNI
+## Install the Flannel CNI
 
 ```
 KUBECONFIG=/tmp/mgmt-cluster kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 ```
 
+## Bootstrapping Cluster
 Now turn this newly created cluster into our management cluster where we can create n number of workload clusters
 
 ```
@@ -183,7 +195,7 @@ kind delete cluster --name capi-mgmt
 
 
 
-## Generate a cluster manifest for our dev cluster
+## Generate a Cluster Manifest for our Dev Cluster
 
 ```
 KUBECONFIG=/tmp/mgmt-cluster clusterctl generate cluster dev-cluster --kubernetes-version v1.31.6 --control-plane-machine-count=3 --worker-machine-count=3 -n dev-cluster > dev.yaml
@@ -220,34 +232,37 @@ Get the k8s config for the dev cluster
 KUBECONFIG=/tmp/mgmt-cluster clusterctl -n dev-cluster get kubeconfig dev-cluster > /tmp/dev-cluster
 ```
 
-## Install Hetzner helper software
+## Install Hetzner Helper Software On Dev Cluster
 
 Install Hetzner CCM and CSI
 
 ```
 KUBECONFIG=/tmp/dev-cluster helm repo add hcloud https://charts.hetzner.cloud
+```
+```
 KUBECONFIG=/tmp/dev-cluster helm repo update hcloud
-
+```
+```
 KUBECONFIG=/tmp/dev-cluster helm upgrade --install hccm hcloud/hcloud-cloud-controller-manager \
         --namespace kube-system \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.name=hetzner \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.key=hcloud
-
-
+```
+```
 KUBECONFIG=/tmp/dev-cluster helm upgrade --install hcloud-csi hcloud/hcloud-csi \
         --namespace kube-system \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.name=hetzner \
         --set env.HCLOUD_TOKEN.valueFrom.secretKeyRef.key=hcloud
 ```
 
-validate csi
+## Validate CSI for Dev Cluster
 
 ```
 KUBECONFIG=/tmp/dev-cluster k get csidrivers
 ```
 
 
-Install the Flannel CNI
+## Install the Flannel CNI on Dev Cluster
 
 ```
 KUBECONFIG=/tmp/dev-cluster k apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
