@@ -27,10 +27,10 @@ https://syself.com/docs/caph/getting-started/quickstart/management-cluster-setup
 
 ### Copy the Example .env File 
 
-The `mgmt.env` file gives an example configuration for your management cluster
+The `example.env` file gives an example configuration for your management cluster
 
 ```
-cp mgmt.env .env
+cp example.env .env
 ```
 
 ### Create a Project In Hetzner
